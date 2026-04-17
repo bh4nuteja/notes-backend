@@ -66,7 +66,7 @@ router.post('/:id/summarize', auth, async (req, res) => {
     if (!note) return res.status(404).json({ message: 'Note not found' });
 
     const response = await openai.chat.completions.create({
-      model: 'openai/gpt-4.1-nano',
+      model: 'openai/gpt-oss-120b:free/',
       messages: [
         {
           role: 'system',
