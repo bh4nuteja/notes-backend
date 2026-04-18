@@ -2,14 +2,12 @@ require('dotenv').config();
 const express = require('express');
 const Note = require('../models/Note');
 const auth = require('../middleware/auth');
-const OpenAI = require('openai');
+
+const { GoogleGenAI } = require('@google/genai');
 
 const router = express.Router();
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-  baseURL: 'https://openrouter.ai/api/v1'
-});
+const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
 // GET all notes
 router.get('/', auth, async (req, res) => {
@@ -59,40 +57,34 @@ router.delete('/:id', auth, async (req, res) => {
   }
 });
 
-// POST summarise note with AI
+// POST summarise note with Gemini
 router.post('/:id/summarize', auth, async (req, res) => {
   try {
     const note = await Note.findOne({ _id: req.params.id, userId: req.user.id });
     if (!note) return res.status(404).json({ message: 'Note not found' });
 
-    const response = await openai.chat.completions.create({
-      model: 'openai/gpt-5.2',
-      messages: [
-        {
-          role: 'system',
-          content: 'You are a helpful assistant that summarises notes in 2-3 sentences.'
-        },
-        {
-          role: 'user',
-          content: `Summarise this note:\n\n${note.content}`
-        }
-      ],
-      max_tokens: 150
-    });
+    console.log('Summarising:', note.title);
+    console.log('API Key:', process.env.GEMINI_API_KEY ? 'loaded' : 'MISSING');
 
-    if (!response.choices || response.choices.length === 0) {
-  console.log('Bad response from OpenRouter:', JSON.stringify(response, null, 2));
-  return res.status(500).json({ message: 'AI returned empty response' });
-}
+    const response = await ai.models.generateContent({
+  model: 'gemini-2.5-flash',
+  contents: `Summarise the following note in 2-3 clear sentences:\n\n${note.content}`
+});
 
-const summary = response.choices[0].message.content;
+console.log('Full response:', JSON.stringify(response, null, 2)); // ADD THIS
+
+const summary = response.candidates[0].content.parts[0].text;
+
+    console.log('Summary:', summary);
+
     note.summary = summary;
     await note.save();
 
     res.json({ summary });
+
   } catch (err) {
-    console.error(err.message);
-    res.status(500).json({ message: 'AI summarisation failed' });
+    console.error('Gemini error:', err.message);
+    res.status(500).json({ message: err.message });
   }
 });
 

@@ -4,6 +4,7 @@ const mongoose = require('mongoose');
 const cors = require('cors');
 
 const app = express();
+
 app.use(cors());
 app.use(express.json());
 
@@ -26,6 +27,7 @@ const notesRoutes = require('./routes/notes');
 app.use('/api/notes', notesRoutes);
 
 app.use(cors({
-  origin: ['http://localhost:3000'],
-  credentials: true
+  origin: '*',
+  methods: ['GET', 'POST', 'PUT', 'DELETE'],
+  allowedHeaders: ['Content-Type', 'Authorization']
 }));
